@@ -11,4 +11,11 @@ dependencies = [
     "sqlalchemy>=2.0.40",
     "uvicorn>=0.34.2",
     "python-multipart>=0.0.7",
+    "dialdesk-ai-platform-core",
+    "langchain>=0.3.25",
+    "langchain-community>=0.3.23",
+    "pypdf>=5.4.0",
 ]
+
+[tool.uv.sources]
+dialdesk-ai-platform-core = { git = "https://github.com/arisodev/dialdesk-ai-platform-core.git", rev = "dev" }

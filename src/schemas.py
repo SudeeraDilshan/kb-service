@@ -1,12 +1,13 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 class KnowledgeBaseBase(BaseModel):
     name: str
 
 class KnowledgeBaseCreate(KnowledgeBaseBase):
-    pass
+    embedding_model: Optional[str] = None
+    vector_store: Optional[str] = None
 
 class KnowledgeBase(KnowledgeBaseBase):
     kb_id: str
@@ -30,4 +31,11 @@ class FileMetadata(FileMetadataCreate):
 
 class FileUploadResponse(BaseModel):
     files_uploaded: List[FileMetadata]
+    message: str
+
+class EmbeddingResponse(BaseModel):
+    kb_id: str
+    file_count: int
+    total_content_length: int
+    processed_files: List[str]
     message: str

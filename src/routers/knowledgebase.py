@@ -1,12 +1,20 @@
 import os
 import uuid
+import pathlib
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
 from datetime import datetime
-import pathlib
-from typing import List
+from typing import List, Dict
+import mimetypes
+from langchain_community.document_loaders.csv_loader import CSVLoader
+from langchain_community.document_loaders import PyPDFLoader
+# from langchain.document_loaders import JSONLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+from langchain_community.document_loaders import UnstructuredHTMLLoader
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 router = APIRouter()
 
@@ -113,3 +121,119 @@ async def upload_files(
         "files_uploaded": uploaded_files,
         "message": f"Successfully uploaded {len(uploaded_files)} files to knowledge base {kb_id}"
     }
+    
+    
+@router.get("/knowledgebases/{kb_id}/embeddings", response_model=schemas.EmbeddingResponse)
+def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
+    # Check if knowledge base exists
+    kb = db.query(models.KnowledgeBase).filter(models.KnowledgeBase.kb_id == kb_id).first()
+    if not kb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    
+    # Get path to resources directory for this knowledge base
+    base_path = pathlib.Path(__file__).parent.parent
+    sources_dir = base_path / "resources" / kb_id / "sources"
+    
+    if not os.path.exists(sources_dir):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Sources directory for knowledge base {kb_id} not found"
+        )
+    
+    all_documents = []
+    processed_files = []
+    all_content = ""
+    
+    try:
+        for filename in os.listdir(sources_dir):
+            file_path = os.path.join(sources_dir, filename)
+            
+            # Skip directories
+            if os.path.isdir(file_path):
+                continue
+                
+            # Get file extension
+            file_extension = os.path.splitext(filename)[1].lower()
+            
+            loader = None
+            
+            # Select appropriate loader based on file extension
+            try:
+                # if file_extension in ['.txt', '.py', '.js', '.css', '.java', '.c', '.cpp', '.ts']:
+                #     loader = TextLoader(file_path)
+                if file_extension == '.csv':
+                    loader = CSVLoader(file_path)
+                # elif file_extension == '.json':
+                #     loader = JSONLoader(file_path, jq_schema='.[]')
+                elif file_extension in ['.md', '.markdown']:
+                    loader = UnstructuredMarkdownLoader(file_path)
+                elif file_extension in ['.html', '.htm']:
+                    loader = UnstructuredHTMLLoader(file_path)
+                elif file_extension == '.pdf':
+                    loader = PyPDFLoader(file_path)
+                # elif file_extension in ['.docx', '.doc']:
+                #     loader = Docx2txtLoader(file_path)
+                # elif file_extension in ['.pptx', '.ppt']:
+                #     loader = UnstructuredPowerPointLoader(file_path)
+                # elif file_extension in ['.xlsx', '.xls']:
+                #     loader = UnstructuredExcelLoader(file_path)
+                
+                # If we have a supported loader, load the document
+                if loader:
+                    documents = loader.load()
+                    all_documents.extend(documents)
+                    processed_files.append(filename)
+                    
+                    # Extract text from documents and add to all_content
+                    for doc in documents:
+                        all_content += f"\n\n--- File: {filename} ---\n\n"
+                        all_content += doc.page_content
+                
+                # print(all_content) 
+                
+
+            
+            except Exception as e:
+                # Log the error but continue processing other files
+                print(f"Error processing {filename}: {str(e)}")
+                continue
+            
+        text_splitter = RecursiveCharacterTextSplitter(
+                                chunk_size=800,
+                                chunk_overlap=80,
+                                length_function=len,
+                                is_separator_regex=False,
+                                separators=["\n\n", "\n", " ", ""],)
+                
+        texts = text_splitter.create_documents([all_content]) 
+                      
+        print(texts[0])
+        print("------------------------------------")
+        print(texts[1])  
+        print("------------------------------------")
+        print(texts[2])
+        print("------------------------------------")
+        print(texts[3])  
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing files: {str(e)}"
+        )
+    
+    # In a real application, you would:
+    # 1. Split the documents into chunks
+    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    # splits = text_splitter.split_documents(all_documents)
+    # 
+    # 2. Create embeddings with the model specified in the KB
+    # 3. Store in the vector store specified in the KB
+    
+    return {
+        "kb_id": kb_id,
+        "file_count": len(processed_files),
+        "total_content_length": len(all_content),
+        "processed_files": processed_files,
+        "message": f"Processed {len(processed_files)} files from knowledge base {kb_id}"
+    }
+
