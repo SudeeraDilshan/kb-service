@@ -101,7 +101,8 @@ async def upload_files(
                 filename=filename,
                 file_size=len(contents),
                 file_type=file_extension.replace(".", ""),
-                kb_id=kb_id
+                kb_id=kb_id,
+                file_path=str(file_path)  # Store the absolute file path
             )
             
             # Add to database

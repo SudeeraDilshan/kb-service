@@ -21,6 +21,7 @@ class FileMetadataCreate(BaseModel):
     file_size: int
     file_type: str
     kb_id: str
+    file_path: str  # Added field for file path
 
 class FileMetadata(FileMetadataCreate):
     file_id: str
