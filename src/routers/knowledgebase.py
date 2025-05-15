@@ -2,12 +2,15 @@ import os
 import uuid
 import pathlib
 import shutil
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Optional
 import mimetypes
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import PyPDFLoader
@@ -63,6 +66,7 @@ def create_knowledge_base(kb: schemas.KnowledgeBaseCreate, db: Session = Depends
 async def upload_files(
     kb_id: str, 
     files: List[UploadFile] = File(...),
+    # base_url: Optional[str] = Form(None),  # Optional base URL for file access
     db: Session = Depends(get_db)
 ):
     # Check if knowledge base exists
@@ -100,6 +104,12 @@ async def upload_files(
                 with open(file_path, "wb") as f:
                     f.write(contents)
                 
+                # Generate URL if base_url is provided
+                # file_url = None
+                # if base_url:
+                #     # Create a URL path using the kb_id and filename
+                #     file_url = f"{base_url.rstrip('/')}/kb/{kb_id}/files/{filename}"
+                
                 # Create file metadata entry
                 file_metadata = models.FileMetadata(
                     file_id=file_id,
@@ -107,7 +117,8 @@ async def upload_files(
                     file_size=len(contents),
                     file_type=file_extension.replace(".", ""),
                     kb_id=kb_id,
-                    file_path=str(file_path)  # Store the absolute file path
+                    file_path=str(file_path),
+                    # url=file_url  # Store the URL
                 )
                 
                 # Add to database
@@ -348,6 +359,8 @@ def delete_file(kb_id: str, file_id: str, db: Session = Depends(get_db)):
         
         if remaining_files == 0:
             kb.status = schemas.statusEnum.EMPTY
+        else:
+            kb.status = schemas.statusEnum.UPDATED
         
         # Commit the changes
         db.commit()
@@ -364,5 +377,106 @@ def delete_file(kb_id: str, file_id: str, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete file: {str(e)}"
+        )
+
+@router.post("/knowledgebases/{kb_id}/url", response_model=schemas.UrlSubmissionResponse)
+def add_url_source(
+    kb_id: str,
+    url_submission: schemas.UrlSubmission,
+    db: Session = Depends(get_db)
+):
+    """
+    Add a website URL as a source to the knowledge base.
+    The website will be scraped and its content saved.
+    """
+    # Check if knowledge base exists
+    kb = db.query(models.KnowledgeBase).filter(models.KnowledgeBase.kb_id == kb_id).first()
+    if not kb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    
+    try:
+        url = str(url_submission.url)
+        
+        # Parse URL to get domain for filename
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        
+        # Generate a filename based on the domain
+        filename = f"{domain}_{uuid.uuid4().hex[:8]}.html"
+        
+        # Generate unique file ID
+        file_id = f"file_{uuid.uuid4()}"
+        
+        # Define path to save file
+        base_path = pathlib.Path(__file__).parent.parent
+        sources_dir = base_path / "resources" / kb_id / "sources"
+        
+        # Make sure the directory exists
+        os.makedirs(sources_dir, exist_ok=True)
+        
+        file_path = os.path.join(sources_dir, filename)
+        
+        # Fetch website content
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # Get the HTML content
+        html_content = response.text
+        
+        # Use BeautifulSoup to extract and clean text content
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.extract()
+        
+        # Save original HTML for complete reference
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        
+        # Create file metadata
+        file_metadata = models.FileMetadata(
+            file_id=file_id,
+            filename=filename,
+            file_size=len(html_content),
+            file_type="html",
+            kb_id=kb_id,
+            file_path=str(file_path),
+            url = url
+        )
+        
+        # Add to database
+        db.add(file_metadata)
+        
+        # Update the knowledge base last_updated_at timestamp and status
+        kb.last_updated_at = datetime.now()
+        kb.status = schemas.statusEnum.UPDATED
+        
+        # Commit changes
+        db.commit()
+        db.refresh(file_metadata)
+        
+        return {
+            "kb_id": kb_id,
+            "file_id": file_id,
+            "url": url,
+            "filename": filename,
+            "file_size": len(html_content),
+            "message": f"Successfully scraped and added {url} to knowledge base {kb_id}"
+        }
+        
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch URL: {str(e)}"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process URL: {str(e)}"
         )
 

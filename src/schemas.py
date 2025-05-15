@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from datetime import datetime
 from typing import Optional, List, Dict
 from enum import Enum
@@ -30,6 +30,7 @@ class FileMetadataCreate(BaseModel):
     file_type: str
     kb_id: str
     file_path: str  # Added field for file path
+    url: Optional[str] = None  # Optional URL field
 
 class FileMetadata(FileMetadataCreate):
     file_id: str
@@ -58,4 +59,15 @@ class DeleteFileResponse(BaseModel):
     kb_id: str
     file_id: str
     filename: str
+    message: str
+
+class UrlSubmission(BaseModel):
+    url: HttpUrl
+
+class UrlSubmissionResponse(BaseModel):
+    kb_id: str
+    file_id: str
+    url: str
+    filename: str
+    file_size: int
     message: str

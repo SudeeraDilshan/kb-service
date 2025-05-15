@@ -24,3 +24,4 @@ class FileMetadata(Base):
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     kb_id = Column(String, ForeignKey("knowledge_bases.kb_id"))
     file_path = Column(String)  # Added column for storing file path
+    url = Column(String, nullable=True)  # URL for accessing the file (optional)
