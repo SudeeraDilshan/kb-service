@@ -5,6 +5,8 @@ A FastAPI service for managing knowledge bases with PostgreSQL database integrat
 ## Features
 
 - Create knowledge bases with unique IDs
+- Upload files to knowledge bases
+- Delete knowledge bases and their associated files
 - Automatic folder structure creation for each knowledge base
 - PostgreSQL integration for data persistence
 
@@ -50,6 +52,19 @@ Response:
   "kb_id": "kb_1",
   "name": "My Knowledge Base",
   "created_at": "2023-07-21T10:30:45.123Z"
+}
+```
+
+### Delete Knowledge Base
+
+**DELETE** `/api/knowledgebases/{kb_id}`
+
+Response:
+```json
+{
+  "kb_id": "kb_1",
+  "message": "Knowledge base kb_1 has been successfully deleted",
+  "deleted_files": 3
 }
 ```
 

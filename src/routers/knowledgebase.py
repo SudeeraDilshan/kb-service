@@ -1,6 +1,7 @@
 import os
 import uuid
 import pathlib
+import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -256,4 +257,48 @@ def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
         "processed_files": processed_files,
         "message": f"Processed {len(processed_files)} files from knowledge base {kb_id}"
     }
+
+@router.delete("/knowledgebases/{kb_id}", response_model=schemas.DeleteResponse)
+def delete_knowledge_base(kb_id: str, db: Session = Depends(get_db)):
+    """
+    Delete a knowledge base and all its associated files and metadata.
+    """
+    # Check if knowledge base exists
+    kb = db.query(models.KnowledgeBase).filter(models.KnowledgeBase.kb_id == kb_id).first()
+    if not kb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
+    
+    try:
+        # Get all file metadata records for this KB
+        file_records = db.query(models.FileMetadata).filter(models.FileMetadata.kb_id == kb_id).all()
+        file_count = len(file_records)
+        
+        # Delete all file metadata records
+        db.query(models.FileMetadata).filter(models.FileMetadata.kb_id == kb_id).delete()
+        
+        # Delete the knowledge base record
+        db.delete(kb)
+        
+        # Commit database changes
+        db.commit()
+        
+        # Delete the directory and all files
+        base_path = pathlib.Path(__file__).parent.parent
+        kb_dir = base_path / "resources" / kb_id
+        
+        if os.path.exists(kb_dir):
+            shutil.rmtree(kb_dir)
+        
+        return {
+            "kb_id": kb_id,
+            "message": f"Knowledge base {kb_id} has been successfully deleted",
+            "deleted_files": file_count
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete knowledge base: {str(e)}"
+        )
 

@@ -48,3 +48,8 @@ class EmbeddingResponse(BaseModel):
     total_content_length: int
     processed_files: List[str]
     message: str
+
+class DeleteResponse(BaseModel):
+    kb_id: str
+    message: str
+    deleted_files: int
