@@ -302,3 +302,67 @@ def delete_knowledge_base(kb_id: str, db: Session = Depends(get_db)):
             detail=f"Failed to delete knowledge base: {str(e)}"
         )
 
+@router.delete("/knowledgebases/{kb_id}/files/{file_id}", response_model=schemas.DeleteFileResponse)
+def delete_file(kb_id: str, file_id: str, db: Session = Depends(get_db)):
+    """
+    Delete a specific file from a knowledge base.
+    """
+    # Check if knowledge base exists
+    kb = db.query(models.KnowledgeBase).filter(models.KnowledgeBase.kb_id == kb_id).first()
+    if not kb:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Knowledge base not found"
+        )
+    
+    # Check if file exists and belongs to this knowledge base
+    file_metadata = db.query(models.FileMetadata).filter(
+        models.FileMetadata.file_id == file_id,
+        models.FileMetadata.kb_id == kb_id
+    ).first()
+    
+    if not file_metadata:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"File with ID {file_id} not found in knowledge base {kb_id}"
+        )
+    
+    try:
+        # Store values before deletion for response
+        filename = file_metadata.filename
+        
+        # Delete the file from the file system if it exists
+        if os.path.exists(file_metadata.file_path):
+            os.remove(file_metadata.file_path)
+        
+        # Delete the file metadata from the database
+        db.delete(file_metadata)
+        
+        # Update the knowledge base last_updated_at timestamp
+        kb.last_updated_at = datetime.now()
+        
+        # If this was the last file, set status back to EMPTY
+        remaining_files = db.query(models.FileMetadata).filter(
+            models.FileMetadata.kb_id == kb_id
+        ).count()
+        
+        if remaining_files == 0:
+            kb.status = schemas.statusEnum.EMPTY
+        
+        # Commit the changes
+        db.commit()
+        
+        return {
+            "kb_id": kb_id,
+            "file_id": file_id,
+            "filename": filename,
+            "message": f"File {filename} has been successfully deleted from knowledge base {kb_id}"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete file: {str(e)}"
+        )
+

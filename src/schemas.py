@@ -53,3 +53,9 @@ class DeleteResponse(BaseModel):
     kb_id: str
     message: str
     deleted_files: int
+
+class DeleteFileResponse(BaseModel):
+    kb_id: str
+    file_id: str
+    filename: str
+    message: str

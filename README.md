@@ -68,6 +68,20 @@ Response:
 }
 ```
 
+### Delete File from Knowledge Base
+
+**DELETE** `/api/knowledgebases/{kb_id}/files/{file_id}`
+
+Response:
+```json
+{
+  "kb_id": "kb_1",
+  "file_id": "file_abc123",
+  "filename": "document.pdf",
+  "message": "File document.pdf has been successfully deleted from knowledge base kb_1"
+}
+```
+
 ## Project Structure
 
 ```
