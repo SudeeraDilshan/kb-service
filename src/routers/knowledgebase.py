@@ -46,7 +46,10 @@ def create_knowledge_base(kb: schemas.KnowledgeBaseCreate, db: Session = Depends
     db_kb = models.KnowledgeBase(
         kb_id=kb_id,
         name=kb.name,
-        created_at=datetime.now()
+        created_at=datetime.now(),
+        embedding_model=kb.embedding_model,
+        vector_store=kb.vector_store,
+        status=kb.status
     )
     
     db.add(db_kb)
@@ -75,53 +78,69 @@ async def upload_files(
     
     uploaded_files = []
     
-    for file in files:
-        # Generate unique file ID
-        file_id = f"file_{uuid.uuid4()}"
-        
-        # Get file extension and determine file type
-        filename = file.filename
-        file_extension = os.path.splitext(filename)[1].lower()
-        
-        # Create full path to save the file
-        file_path = os.path.join(sources_dir, filename)
-        
-        # Save the file
-        try:
-            # Read file content
-            contents = await file.read()
+    try:
+        for file in files:
+            # Generate unique file ID
+            file_id = f"file_{uuid.uuid4()}"
             
-            # Write file to disk
-            with open(file_path, "wb") as f:
-                f.write(contents)
+            # Get file extension and determine file type
+            filename = file.filename
+            file_extension = os.path.splitext(filename)[1].lower()
             
-            # Create file metadata entry
-            file_metadata = models.FileMetadata(
-                file_id=file_id,
-                filename=filename,
-                file_size=len(contents),
-                file_type=file_extension.replace(".", ""),
-                kb_id=kb_id,
-                file_path=str(file_path)  # Store the absolute file path
-            )
+            # Create full path to save the file
+            file_path = os.path.join(sources_dir, filename)
             
-            # Add to database
-            db.add(file_metadata)
-            db.commit()
+            # Save the file
+            try:
+                # Read file content
+                contents = await file.read()
+                
+                # Write file to disk
+                with open(file_path, "wb") as f:
+                    f.write(contents)
+                
+                # Create file metadata entry
+                file_metadata = models.FileMetadata(
+                    file_id=file_id,
+                    filename=filename,
+                    file_size=len(contents),
+                    file_type=file_extension.replace(".", ""),
+                    kb_id=kb_id,
+                    file_path=str(file_path)  # Store the absolute file path
+                )
+                
+                # Add to database
+                db.add(file_metadata)
+                uploaded_files.append(file_metadata)
+                
+            except Exception as e:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to upload file {filename}: {str(e)}"
+                )
+        
+        # Update the last_updated_at timestamp and status for the knowledge base
+        kb.last_updated_at = datetime.now()
+        kb.status = schemas.statusEnum.UPDATED  # Change status to UPDATED
+        
+        # Commit all changes to the database
+        db.commit()
+        
+        # Refresh to get the updated records
+        for file_metadata in uploaded_files:
             db.refresh(file_metadata)
-            
-            uploaded_files.append(file_metadata)
         
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to upload file {filename}: {str(e)}"
-            )
-    
-    return {
-        "files_uploaded": uploaded_files,
-        "message": f"Successfully uploaded {len(uploaded_files)} files to knowledge base {kb_id}"
-    }
+        return {
+            "files_uploaded": uploaded_files,
+            "message": f"Successfully uploaded {len(uploaded_files)} files to knowledge base {kb_id}"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload files: {str(e)}"
+        )
     
     
 @router.get("/knowledgebases/{kb_id}/embeddings", response_model=schemas.EmbeddingResponse)

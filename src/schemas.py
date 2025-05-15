@@ -1,17 +1,25 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List, Dict
+from enum import Enum
+
+class statusEnum(str, Enum):
+    EMPTY = "empty"
+    UPDATED = "updated"
+    EMBEDDED = "embedded"
 
 class KnowledgeBaseBase(BaseModel):
     name: str
-
+    status : statusEnum = statusEnum.EMPTY
+    
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     embedding_model: Optional[str] = None
     vector_store: Optional[str] = None
 
-class KnowledgeBase(KnowledgeBaseBase):
+class KnowledgeBase(KnowledgeBaseCreate):
     kb_id: str
     created_at: datetime
+    last_updated_at: datetime
     
     class Config:
         from_attributes = True  # Updated from orm_mode = True for Pydantic v2
