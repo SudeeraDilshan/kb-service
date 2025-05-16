@@ -11,14 +11,12 @@ from ..database import get_db
 from .. import models, schemas
 from datetime import datetime
 from typing import List, Dict, Optional
-import mimetypes
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import PyPDFLoader
-# from langchain.document_loaders import JSONLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.document_loaders import UnstructuredHTMLLoader
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from ..vector_store_pg import add_to_db
 
 router = APIRouter()
 
@@ -218,7 +216,7 @@ def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
                     
                     # Extract text from documents and add to all_content
                     for doc in documents:
-                        all_content += f"\n\n--- File: {filename} ---\n\n"
+                        # all_content += f"\n\n--- File: {filename} ---\n\n"
                         all_content += doc.page_content
                 
                 # print(all_content) 
@@ -232,34 +230,24 @@ def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
             
         text_splitter = RecursiveCharacterTextSplitter(
                                 chunk_size=800,
-                                chunk_overlap=80,
+                                chunk_overlap=100,
                                 length_function=len,
                                 is_separator_regex=False,
                                 separators=["\n\n", "\n", " ", ""],)
                 
         texts = text_splitter.create_documents([all_content]) 
-                      
-        print(texts[0])
-        print("------------------------------------")
-        print(texts[1])  
-        print("------------------------------------")
-        print(texts[2])
-        print("------------------------------------")
-        print(texts[3])  
+        docs = [doc.page_content for doc in texts]
+        
+        add_to_db(knowledge_base=kb.name,chunk_list=docs)
+        kb.status = schemas.statusEnum.EMBEDDED
+        db.commit()
+        db.refresh(kb)
     
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing files: {str(e)}"
         )
-    
-    # In a real application, you would:
-    # 1. Split the documents into chunks
-    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    # splits = text_splitter.split_documents(all_documents)
-    # 
-    # 2. Create embeddings with the model specified in the KB
-    # 3. Store in the vector store specified in the KB
     
     return {
         "kb_id": kb_id,

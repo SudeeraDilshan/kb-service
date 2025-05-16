@@ -11,12 +11,14 @@ dependencies = [
     "sqlalchemy>=2.0.40",
     "uvicorn>=0.34.2",
     "python-multipart>=0.0.7",
-    "dialdesk-ai-platform-core",
     "langchain>=0.3.25",
     "langchain-community>=0.3.23",
     "pypdf>=5.4.0",
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.3",
+    "dialdesk-ai-platform-core",
+    "psycopg[binary]>=3.2.9",
+    "unstructured>=0.17.2",
 ]
 
 [tool.uv.sources]
