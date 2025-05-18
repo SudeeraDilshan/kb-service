@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, EmailStr
 from datetime import datetime
 from typing import Optional, List, Dict
 from enum import Enum
@@ -71,3 +71,28 @@ class UrlSubmissionResponse(BaseModel):
     filename: str
     file_size: int
     message: str
+
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+    is_admin: Optional[bool] = False
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    is_admin: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

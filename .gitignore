@@ -10,3 +10,4 @@ resources/
 # Virtual environments
 .venv
 .env
+.vscode

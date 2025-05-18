@@ -11,17 +11,25 @@ from ..database import get_db
 from .. import models, schemas
 from datetime import datetime
 from typing import List, Dict, Optional
+import traceback
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from ..vector_store_pg import add_to_db
+from ..vector_stores import add_to_vectorStore
+from ..security.utils import get_current_active_user, validate_admin
+# from langchain_community.document_loaders import JSONLoader
+# import json
 
 router = APIRouter()
 
 @router.post("/knowledgebases", response_model=schemas.KnowledgeBase)
-def create_knowledge_base(kb: schemas.KnowledgeBaseCreate, db: Session = Depends(get_db)):
+def create_knowledge_base(
+    kb: schemas.KnowledgeBaseCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
     # Get the next KB ID (simple implementation)
     last_kb = db.query(models.KnowledgeBase).order_by(models.KnowledgeBase.kb_id.desc()).first()
     
@@ -64,8 +72,8 @@ def create_knowledge_base(kb: schemas.KnowledgeBaseCreate, db: Session = Depends
 async def upload_files(
     kb_id: str, 
     files: List[UploadFile] = File(...),
-    # base_url: Optional[str] = Form(None),  # Optional base URL for file access
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
 ):
     # Check if knowledge base exists
     kb = db.query(models.KnowledgeBase).filter(models.KnowledgeBase.kb_id == kb_id).first()
@@ -154,7 +162,11 @@ async def upload_files(
     
     
 @router.get("/knowledgebases/{kb_id}/embeddings", response_model=schemas.EmbeddingResponse)
-def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
+def made_embeddings(
+    kb_id: str, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
     # Check if knowledge base exists
     kb = db.query(models.KnowledgeBase).filter(models.KnowledgeBase.kb_id == kb_id).first()
     if not kb:
@@ -238,7 +250,14 @@ def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
         texts = text_splitter.create_documents([all_content]) 
         docs = [doc.page_content for doc in texts]
         
-        add_to_db(knowledge_base=kb.name,chunk_list=docs)
+        config ={
+            "knowledge_base":kb.name,
+            "embedding_model": kb.embedding_model,
+            "vector_store": kb.vector_store
+        } 
+        
+        add_to_vectorStore(config=config,chunk_list=docs)
+        
         kb.status = schemas.statusEnum.EMBEDDED
         db.commit()
         db.refresh(kb)
@@ -258,7 +277,11 @@ def made_embeddings(kb_id: str, db: Session = Depends(get_db)):
     }
 
 @router.delete("/knowledgebases/{kb_id}", response_model=schemas.DeleteResponse)
-def delete_knowledge_base(kb_id: str, db: Session = Depends(get_db)):
+def delete_knowledge_base(
+    kb_id: str, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(validate_admin)  # Only admins can delete knowledge bases
+):
     """
     Delete a knowledge base and all its associated files and metadata.
     """
@@ -302,7 +325,12 @@ def delete_knowledge_base(kb_id: str, db: Session = Depends(get_db)):
         )
 
 @router.delete("/knowledgebases/{kb_id}/files/{file_id}", response_model=schemas.DeleteFileResponse)
-def delete_file(kb_id: str, file_id: str, db: Session = Depends(get_db)):
+def delete_file(
+    kb_id: str, 
+    file_id: str, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
     """
     Delete a specific file from a knowledge base.
     """
@@ -371,7 +399,8 @@ def delete_file(kb_id: str, file_id: str, db: Session = Depends(get_db)):
 def add_url_source(
     kb_id: str,
     url_submission: schemas.UrlSubmission,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
 ):
     """
     Add a website URL as a source to the knowledge base.
