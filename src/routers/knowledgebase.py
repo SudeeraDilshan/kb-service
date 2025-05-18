@@ -5,17 +5,17 @@ import shutil
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File,status
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
 from datetime import datetime
-from typing import List, Dict, Optional
-import traceback
+from typing import List
 from langchain_community.document_loaders.csv_loader import CSVLoader
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.document_loaders import UnstructuredHTMLLoader
+from langchain_community.document_loaders.word_document import Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..vector_stores import add_to_vectorStore
 from ..security.utils import get_current_active_user, validate_admin
@@ -213,8 +213,8 @@ def made_embeddings(
                     loader = UnstructuredHTMLLoader(file_path)
                 elif file_extension == '.pdf':
                     loader = PyPDFLoader(file_path)
-                # elif file_extension in ['.docx', '.doc']:
-                #     loader = Docx2txtLoader(file_path)
+                elif file_extension in ['.docx', '.doc']:
+                    loader = Docx2txtLoader(file_path)
                 # elif file_extension in ['.pptx', '.ppt']:
                 #     loader = UnstructuredPowerPointLoader(file_path)
                 # elif file_extension in ['.xlsx', '.xls']:

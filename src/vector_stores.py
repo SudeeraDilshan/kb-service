@@ -33,8 +33,8 @@ def add_to_vectorStore(config:dict,chunk_list:list[str]):
         
     # elif config.get("embedding_model") == "gemini":
     #     embedding_model = GoogleGeminiEmbeddings(
-    #         model_name=os.getenv("EMBEDDING_MODEL"),
-    #         api_key=os.getenv("EMBEDDING_MODEL_API_KEY")
+    #         model_name=os.getenv("EMBEDDING_MODEL_GEMINI"),
+    #         api_key=os.getenv("EMBEDDING_MODEL_GEMINI_API_KEY")
     #     )
     
     if config.get("vector_store") == "pgvector":  
