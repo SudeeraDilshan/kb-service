@@ -16,6 +16,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain_community.document_loaders.word_document import Docx2txtLoader
+from langchain_community.document_loaders.text import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..vector_stores import add_to_vectorStore
 from ..security.utils import get_current_active_user, validate_admin
@@ -203,7 +204,7 @@ def made_embeddings(
             try:
                 # if file_extension in ['.txt', '.py', '.js', '.css', '.java', '.c', '.cpp', '.ts']:
                 #     loader = TextLoader(file_path)
-                if file_extension == '.csv':
+                if file_extension in ['.csv']:
                     loader = CSVLoader(file_path)
                 # elif file_extension == '.json':
                 #     loader = JSONLoader(file_path, jq_schema='.[]')
@@ -211,10 +212,12 @@ def made_embeddings(
                     loader = UnstructuredMarkdownLoader(file_path)
                 elif file_extension in ['.html', '.htm']:
                     loader = UnstructuredHTMLLoader(file_path)
-                elif file_extension == '.pdf':
+                elif file_extension in ['.pdf']:
                     loader = PyPDFLoader(file_path)
                 elif file_extension in ['.docx', '.doc']:
                     loader = Docx2txtLoader(file_path)
+                elif file_extension in ['.txt']:
+                    loader = TextLoader(file_path)
                 # elif file_extension in ['.pptx', '.ppt']:
                 #     loader = UnstructuredPowerPointLoader(file_path)
                 # elif file_extension in ['.xlsx', '.xls']:
