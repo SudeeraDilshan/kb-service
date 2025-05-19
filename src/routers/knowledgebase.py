@@ -186,6 +186,7 @@ def made_embeddings(
     all_documents = []
     processed_files = []
     all_content = ""
+    all_chunks=[]
     
     try:
         for filename in os.listdir(sources_dir):
@@ -233,8 +234,21 @@ def made_embeddings(
                     for doc in documents:
                         # all_content += f"\n\n--- File: {filename} ---\n\n"
                         all_content += doc.page_content
+                # print(all_content)
+                # print("---------------------------------------")
+                text_splitter = RecursiveCharacterTextSplitter(
+                        chunk_size=800,
+                        chunk_overlap=100,
+                        length_function=len,
+                        is_separator_regex=False,
+                        separators=["\n\n", "\n", " ", ""],)    
                 
-                # print(all_content) 
+                texts = text_splitter.create_documents([all_content])     
+                all_chunks.extend([doc.page_content for doc in texts])
+                # all_chunks = [doc.page_content for doc in texts]
+                # all_metadata = [doc.metadata for doc in texts]
+                # print(meta[0])
+                # print(all_chunks) 
                 
 
             
@@ -243,23 +257,26 @@ def made_embeddings(
                 print(f"Error processing {filename}: {str(e)}")
                 continue
             
-        text_splitter = RecursiveCharacterTextSplitter(
-                                chunk_size=800,
-                                chunk_overlap=100,
-                                length_function=len,
-                                is_separator_regex=False,
-                                separators=["\n\n", "\n", " ", ""],)
+        # text_splitter = RecursiveCharacterTextSplitter(
+        #                         chunk_size=800,
+        #                         chunk_overlap=100,
+        #                         length_function=len,
+        #                         is_separator_regex=False,
+        #                         separators=["\n\n", "\n", " ", ""],)
                 
-        texts = text_splitter.create_documents([all_content]) 
-        docs = [doc.page_content for doc in texts]
-        
+        # texts = text_splitter.create_documents([all_content]) 
+        # docs = [doc.page_content for doc in texts]
+
+        # print(all_chunks[0])
+        # docs = [doc for doc in all_chunks]
+      
         config ={
             "knowledge_base":kb.name,
             "embedding_model": kb.embedding_model,
             "vector_store": kb.vector_store
         } 
         
-        add_to_vectorStore(config=config,chunk_list=docs)
+        add_to_vectorStore(config=config,chunk_list=all_chunks)
         
         kb.status = schemas.statusEnum.EMBEDDED
         db.commit()
