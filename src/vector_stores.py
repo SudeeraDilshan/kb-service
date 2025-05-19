@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from dialdeskai.src.integrations.embeddings.openai import OpenAIEmbeddings
 from dialdeskai.src.integrations.vector_store.pgvector import PGVector
-# from dialdeskai.src.integrations.vector_store.qdrant import Qdrant
 from dialdeskai.src.types import Message, MessageRole
 from dialdeskai.src.queue.mosquitto_queue import MosquittoQueue
 from dialdeskai.src.queue.trigger import EventTrigger
@@ -23,6 +22,8 @@ q = MosquittoQueue(
 EventTrigger.set_queue(q)
 EventTrigger.set_agent_id("123")
 
+from dialdeskai.src.integrations.vector_store.qdrant import Qdrant
+
 def add_to_vectorStore(config:dict,chunk_list:list[str]):
     
     if config.get("embedding_model") == "openai":
@@ -31,11 +32,11 @@ def add_to_vectorStore(config:dict,chunk_list:list[str]):
             api_key=os.getenv("EMBEDDING_MODEL_OPENAI_API_KEY")
         )
         
-    # elif config.get("embedding_model") == "gemini":
-    #     embedding_model = GoogleGeminiEmbeddings(
-    #         model_name=os.getenv("EMBEDDING_MODEL_GEMINI"),
-    #         api_key=os.getenv("EMBEDDING_MODEL_GEMINI_API_KEY")
-    #     )
+    elif config.get("embedding_model") == "gemini":
+        embedding_model = GoogleGeminiEmbeddings(
+            model_name=os.getenv("EMBEDDING_MODEL_GEMINI"),
+            api_key=os.getenv("EMBEDDING_MODEL_GEMINI_API_KEY")
+        )
     
     if config.get("vector_store") == "pgvector":  
         
@@ -50,13 +51,15 @@ def add_to_vectorStore(config:dict,chunk_list:list[str]):
                 table=table_name
             )
             
-    # elif config.get("vector_store") == "qdrant":
-    #         vector_store = Qdrant(
-    #             host=os.getenv("QDRANT_HOST"),
-    #             port=os.getenv("QDRANT_PORT"),
-    #             collection_name=f"{dict.get("knowledge_base")}_vector",
-    #             embedding_model=embedding_model
-    #         )           
+    elif config.get("vector_store") == "qdrant":
+        
+            collection_name = f"{config.get('knowledge_base')}_vector"
+            vector_store = Qdrant(
+                host=os.getenv("QDRANT_HOST"),
+                port=os.getenv("QDRANT_PORT"),
+                collection_name=collection_name,
+                embedding_model=embedding_model
+            )           
             
     try:
         vector_store.clear()
@@ -66,9 +69,9 @@ def add_to_vectorStore(config:dict,chunk_list:list[str]):
             for chunk in chunk_list:
                vector_store.insert(Message(content=chunk, role=MessageRole.USER), metadata={})
                
-        # elif config.get("vector_store") == "qdrant":
-        #     for chunk in chunk_list:
-        #         vector_store.insert(data=chunk)
+        elif config.get("vector_store") == "qdrant":
+            for chunk in chunk_list:
+                vector_store.insert(data=chunk)
                   
         print("Data inserted successfully")
             
