@@ -96,7 +96,7 @@ async def upload_files(
             file_id = f"file_{uuid.uuid4()}"
             
             # Get file extension and determine file type
-            filename = file.filename
+            filename = f"{file_id}_"+file.filename
             file_extension = os.path.splitext(filename)[1].lower()
             
             # Create full path to save the file
@@ -197,9 +197,32 @@ def made_embeddings(
                 continue
                 
             # Get file extension
-            file_extension = os.path.splitext(filename)[1].lower()
+            name_without_ext,file_extension = os.path.splitext(filename)
+            file_extension = file_extension.lower()
             
+            main_part = name_without_ext.split('_', 2)[:2]
+            file_id = '_'.join(main_part)
             loader = None
+            
+            # get file data
+            file_metadata = db.query(models.FileMetadata).filter(
+                models.FileMetadata.file_id == file_id,
+                models.FileMetadata.kb_id == kb_id
+            ).first()
+            if not file_metadata:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail=f"File with ID {file_id} not found in knowledge base {kb_id}"
+                )
+            
+            file_name = file_metadata.filename
+            file_size = file_metadata.file_size
+            file_type = file_metadata.file_type
+            file_path = file_metadata.file_path
+            file_url = file_metadata.url if file_metadata.url else None
+            kb_id = kb.kb_id
+            kb_name = kb.name
+            
             
             # Select appropriate loader based on file extension
             try:
@@ -243,8 +266,22 @@ def made_embeddings(
                         is_separator_regex=False,
                         separators=["\n\n", "\n", " ", ""],)    
                 
-                texts = text_splitter.create_documents([all_content])     
-                all_chunks.extend([doc.page_content for doc in texts])
+                texts = text_splitter.create_documents([all_content])
+                for doc in texts:
+                    # print(text.page_content)
+                    # print(text.metadata)
+                    # print("=======================================")
+                    meta = doc.metadata
+                    meta['file_name'] = file_name
+                    meta['file_id'] = file_id
+                    meta['file_size'] = file_size
+                    meta['file_type'] = file_type
+                    meta['file_url'] = file_url
+                    meta["kb_id"] = kb_id
+                    meta["kb_name"] = kb_name
+                    doc.metadata = meta   
+                      
+                all_chunks.extend([doc for doc in texts])
                 # all_chunks = [doc.page_content for doc in texts]
                 # all_metadata = [doc.metadata for doc in texts]
                 # print(meta[0])
@@ -439,19 +476,21 @@ def add_url_source(
         domain = parsed_url.netloc
         
         # Generate a filename based on the domain
-        filename = f"{domain}_{uuid.uuid4().hex[:8]}.html"
+        get_domain = f"{domain}.html"
         
         # Generate unique file ID
         file_id = f"file_{uuid.uuid4()}"
         
+        file_name= f"{file_id}_{get_domain}"
+        
         # Define path to save file
-        base_path = pathlib.Path(__file__).parent.parent
+        base_path = pathlib.Path(__file__).parent.parent  #src directory
         sources_dir = base_path / "resources" / kb_id / "sources"
         
         # Make sure the directory exists
         os.makedirs(sources_dir, exist_ok=True)
         
-        file_path = os.path.join(sources_dir, filename)
+        file_path = os.path.join(sources_dir, file_name)
         
         # Fetch website content
         headers = {
@@ -477,7 +516,7 @@ def add_url_source(
         # Create file metadata
         file_metadata = models.FileMetadata(
             file_id=file_id,
-            filename=filename,
+            filename=file_path,
             file_size=len(html_content),
             file_type="html",
             kb_id=kb_id,
@@ -500,7 +539,7 @@ def add_url_source(
             "kb_id": kb_id,
             "file_id": file_id,
             "url": url,
-            "filename": filename,
+            "filename": file_name,
             "file_size": len(html_content),
             "message": f"Successfully scraped and added {url} to knowledge base {kb_id}"
         }

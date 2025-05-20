@@ -6,6 +6,7 @@ from dialdeskai.src.types import Message, MessageRole
 from dialdeskai.src.queue.mosquitto_queue import MosquittoQueue
 from dialdeskai.src.queue.trigger import EventTrigger
 from dialdeskai.src.integrations.embeddings.gemini import GoogleGeminiEmbeddings
+from langchain_core.documents import Document
 
 load_dotenv()
 
@@ -24,7 +25,7 @@ EventTrigger.set_agent_id("123")
 
 from dialdeskai.src.integrations.vector_store.qdrant import Qdrant
 
-def add_to_vectorStore(config:dict,chunk_list:list[str]):
+def add_to_vectorStore(config:dict,chunk_list:list[Document]):
     
     if config.get("embedding_model") == "openai":
         embedding_model = OpenAIEmbeddings(
@@ -67,11 +68,11 @@ def add_to_vectorStore(config:dict,chunk_list:list[str]):
         # Insert data
         if config.get("vector_store") == "pgvector":
             for chunk in chunk_list:
-               vector_store.insert(Message(content=chunk, role=MessageRole.USER), metadata={})
+               vector_store.insert(Message(content=chunk.page_content, role=MessageRole.USER), metadata=chunk.metadata)
                
         elif config.get("vector_store") == "qdrant":
             for chunk in chunk_list:
-                vector_store.insert(data=chunk)
+                vector_store.insert(data=chunk.page_content, metadata=chunk.metadata)
                   
         print("Data inserted successfully")
             
