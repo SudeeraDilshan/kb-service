@@ -68,11 +68,11 @@ def add_to_vectorStore(config:dict,chunk_list:list[Document]):
         # Insert data
         if config.get("vector_store") == "pgvector":
             for chunk in chunk_list:
-               vector_store.insert(Message(content=chunk.page_content, role=MessageRole.USER), metadata=chunk.metadata)
+               vector_store.insert(data=Message(content=chunk.page_content, role=MessageRole.USER), metadata=chunk.metadata)
                
         elif config.get("vector_store") == "qdrant":
             for chunk in chunk_list:
-                vector_store.insert(data=chunk.page_content, metadata=chunk.metadata)
+                vector_store.insert(data=Message(content=chunk.page_content, role=MessageRole.USER), metadata=chunk.metadata)
                   
         print("Data inserted successfully")
             

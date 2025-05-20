@@ -111,12 +111,6 @@ async def upload_files(
                 with open(file_path, "wb") as f:
                     f.write(contents)
                 
-                # Generate URL if base_url is provided
-                # file_url = None
-                # if base_url:
-                #     # Create a URL path using the kb_id and filename
-                #     file_url = f"{base_url.rstrip('/')}/kb/{kb_id}/files/{filename}"
-                
                 # Create file metadata entry
                 file_metadata = models.FileMetadata(
                     file_id=file_id,
@@ -255,12 +249,10 @@ def made_embeddings(
                     
                     # Extract text from documents and add to all_content
                     for doc in documents:
-                        # all_content += f"\n\n--- File: {filename} ---\n\n"
                         all_content += doc.page_content
-                # print(all_content)
-                # print("---------------------------------------")
+
                 text_splitter = RecursiveCharacterTextSplitter(
-                        chunk_size=800,
+                        chunk_size=500,
                         chunk_overlap=100,
                         length_function=len,
                         is_separator_regex=False,
@@ -268,9 +260,7 @@ def made_embeddings(
                 
                 texts = text_splitter.create_documents([all_content])
                 for doc in texts:
-                    # print(text.page_content)
-                    # print(text.metadata)
-                    # print("=======================================")
+
                     meta = doc.metadata
                     meta['file_name'] = file_name
                     meta['file_id'] = file_id
@@ -282,30 +272,11 @@ def made_embeddings(
                     doc.metadata = meta   
                       
                 all_chunks.extend([doc for doc in texts])
-                # all_chunks = [doc.page_content for doc in texts]
-                # all_metadata = [doc.metadata for doc in texts]
-                # print(meta[0])
-                # print(all_chunks) 
-                
-
             
             except Exception as e:
                 # Log the error but continue processing other files
                 print(f"Error processing {filename}: {str(e)}")
                 continue
-            
-        # text_splitter = RecursiveCharacterTextSplitter(
-        #                         chunk_size=800,
-        #                         chunk_overlap=100,
-        #                         length_function=len,
-        #                         is_separator_regex=False,
-        #                         separators=["\n\n", "\n", " ", ""],)
-                
-        # texts = text_splitter.create_documents([all_content]) 
-        # docs = [doc.page_content for doc in texts]
-
-        # print(all_chunks[0])
-        # docs = [doc for doc in all_chunks]
       
         config ={
             "knowledge_base":kb.name,
