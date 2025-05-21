@@ -114,7 +114,7 @@ async def upload_files(
                 # Create file metadata entry
                 file_metadata = models.FileMetadata(
                     file_id=file_id,
-                    filename=filename,
+                    filename=file.filename,
                     file_size=len(contents),
                     file_type=file_extension.replace(".", ""),
                     kb_id=kb_id,
