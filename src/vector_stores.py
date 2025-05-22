@@ -2,11 +2,11 @@ import os
 from dotenv import load_dotenv
 from dialdeskai.src.integrations.embeddings.openai import OpenAIEmbeddings
 from dialdeskai.src.integrations.vector_store.pgvector import PGVector
-from dialdeskai.src.types import Message, MessageRole
 from dialdeskai.src.queue.mosquitto_queue import MosquittoQueue
 from dialdeskai.src.queue.trigger import EventTrigger
 from dialdeskai.src.integrations.embeddings.gemini import GoogleGeminiEmbeddings
 from langchain_core.documents import Document
+from enum import Enum
 
 load_dotenv()
 
@@ -25,24 +25,32 @@ EventTrigger.set_agent_id("123")
 
 from dialdeskai.src.integrations.vector_store.qdrant import Qdrant
 
+class VectorStoreType(str, Enum):
+    PGVECTOR = "pgvector"
+    QDRANT = "qdrant"
+    
+class EmbeddingModelType(str, Enum):
+    OPENAI = "openai"
+    GEMINI = "gemini"
+    
 def add_to_vectorStore(config:dict,chunk_list:list[Document]):
     
-    if config.get("embedding_model") == "openai":
+    if config.get("embedding_model") == EmbeddingModelType.OPENAI:
         embedding_model = OpenAIEmbeddings(
             model_name=os.getenv("EMBEDDING_MODEL_OPENAI"),
             api_key=os.getenv("EMBEDDING_MODEL_OPENAI_API_KEY")
         )
         
-    elif config.get("embedding_model") == "gemini":
+    elif config.get("embedding_model") == EmbeddingModelType.GEMINI:
         embedding_model = GoogleGeminiEmbeddings(
             model_name=os.getenv("EMBEDDING_MODEL_GEMINI"),
             api_key=os.getenv("EMBEDDING_MODEL_GEMINI_API_KEY")
         )
     
-    if config.get("vector_store") == "pgvector":  
+    if config.get("vector_store") == VectorStoreType.PGVECTOR:  
         
             table_name = f"{config.get('knowledge_base')}_vector"
-            vector_store = PGVector(
+            vector_store_pg = PGVector(
                 host="157.230.43.112",
                 port=5432,
                 username="dialdesk_admin",
@@ -52,10 +60,10 @@ def add_to_vectorStore(config:dict,chunk_list:list[Document]):
                 table=table_name
             )
             
-    elif config.get("vector_store") == "qdrant":
+    elif config.get("vector_store") == VectorStoreType.QDRANT:
         
             collection_name = f"{config.get('knowledge_base')}_vector"
-            vector_store = Qdrant(
+            vector_store_qdrant = Qdrant(
                 host=os.getenv("QDRANT_HOST"),
                 port=os.getenv("QDRANT_PORT"),
                 collection_name=collection_name,
@@ -63,16 +71,19 @@ def add_to_vectorStore(config:dict,chunk_list:list[Document]):
             )           
             
     try:
-        vector_store.clear()
+        # vector_store.clear()
 
         # Insert data
-        if config.get("vector_store") == "pgvector":
+        if config.get("vector_store") == VectorStoreType.PGVECTOR:
+            vector_store_pg.clear()
             for chunk in chunk_list:
-               vector_store.insert(data=chunk.page_content, metadata=chunk.metadata)
+            #    print(type(chunk.page_content))
+               vector_store_pg.insert(data=chunk.page_content, metadata=chunk.metadata)
                
-        elif config.get("vector_store") == "qdrant":
+        elif config.get("vector_store") == VectorStoreType.QDRANT:
+            vector_store_qdrant.clear()
             for chunk in chunk_list:
-                vector_store.insert(data=chunk.page_content, metadata=chunk.metadata)
+                vector_store_qdrant.insert(data=chunk.page_content, metadata=chunk.metadata)
                   
         print("Data inserted successfully")
             
