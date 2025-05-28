@@ -4,17 +4,20 @@ from typing import Optional, List, Dict
 from enum import Enum
 
 class statusEnum(str, Enum):
-    EMPTY = "empty"
+    UNSYNCED = "unsynced"
     UPDATED = "updated"
-    EMBEDDED = "embedded"
+    SYNCED = "synced"
+    SYNCING = "syncing"
+    FAILED = "failed"
 
 class KnowledgeBaseBase(BaseModel):
     name: str
-    status : statusEnum = statusEnum.EMPTY
+    status : statusEnum = statusEnum.UNSYNCED
     
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     embedding_model: Optional[str] = None
     vector_store: Optional[str] = None
+    workspace_id: Optional[str] = None  # Optional field for workspace ID
 
 class KnowledgeBase(KnowledgeBaseCreate):
     kb_id: str
@@ -30,9 +33,10 @@ class FileMetadataCreate(BaseModel):
     file_type: str
     kb_id: str
     file_path: str  # Added field for file path
+    status : statusEnum = statusEnum.UNSYNCED  # Default status set to "unsynced"
     url: Optional[str] = None  # Optional URL field
 
-class FileMetadata(FileMetadataCreate):
+class FileMetaData(FileMetadataCreate):
     file_id: str
     upload_date: datetime
     
@@ -40,7 +44,7 @@ class FileMetadata(FileMetadataCreate):
         from_attributes = True
 
 class FileUploadResponse(BaseModel):
-    files_uploaded: List[FileMetadata]
+    files_uploaded: List[FileMetaData]
     message: str
 
 class EmbeddingResponse(BaseModel):

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from src.routers import knowledgebase, auth  # Added auth import
-from src.database import engine
-from src import models
+from src.routers import knowledgebase, auth  # Use absolute import path
+from src.database import engine  # Use absolute import path
+import src.models as models  # Use absolute import path
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
