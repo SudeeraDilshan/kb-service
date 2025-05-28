@@ -12,6 +12,7 @@ class statusEnum(str, Enum):
 
 class KnowledgeBaseBase(BaseModel):
     name: str
+    description: Optional[str] = None  # Make description optional with default None
     status : statusEnum = statusEnum.UNSYNCED
     
 class KnowledgeBaseCreate(KnowledgeBaseBase):

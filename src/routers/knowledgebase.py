@@ -90,15 +90,15 @@ def create_knowledge_base(
                 "message": f"Failed to create directory: {str(e)}"
             }
         
-        # Create knowledge base in database
+        # Create knowledge base in database with description (which might be None)
         db_kb = models.KnowledgeBase(
             kb_id=kb_id,
             name=kb.name,
+            description=kb.description,  # This will handle None values
             created_at=datetime.now(),
             embedding_model=kb.embedding_model,
             vector_store=kb.vector_store,
-            # status=kb.status,
-            workspace_id = kb.workspace_id  # Optional field for workspace ID
+            workspace_id=kb.workspace_id  # Optional field for workspace ID
         )
         
         db.add(db_kb)
@@ -254,7 +254,7 @@ def make_embeddings(
     
     try:
         kb.status = statusEnum.SYNCING
-        kb.last_updated_at = datetime.now()
+        # kb.last_updated_at = datetime.now()
 
         try:
             db.commit()
