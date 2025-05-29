@@ -392,8 +392,8 @@ def make_embeddings(
             
         config ={
             "knowledge_base": kb.name,
-            "embedding_model": kb.embedding_model,
-            "vector_store": kb.vector_store
+            "embedding_model": kb.embedding_model.upper(),
+            "vector_store": kb.vector_store.upper()
         } 
         
         try:

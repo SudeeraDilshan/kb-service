@@ -3,7 +3,7 @@ name = "kb-service"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.12",
     "psycopg2-binary>=2.9.10",
@@ -23,8 +23,8 @@ dependencies = [
     "bcrypt>=4.0.1",
     "pydantic[email]>=2.11.4",
     "docx2txt>=0.9",
-    "dialdesk-ai-platform-core",
+    "dialdesk-ai-vector-stores",
 ]
 
 [tool.uv.sources]
-dialdesk-ai-platform-core = { git = "https://github.com/arisodev/dialdesk-ai-platform-core.git", rev = "bugfix/qdrant_store" }
+dialdesk-ai-vector-stores = { git = "https://github.com/arisodev/dialdesk-ai-vector-stores.git", rev = "dev" }
