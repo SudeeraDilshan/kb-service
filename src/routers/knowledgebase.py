@@ -6,7 +6,8 @@ import requests
 import logging
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, Form, Body
+import json
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
@@ -90,15 +91,16 @@ def create_knowledge_base(
                 "message": f"Failed to create directory: {str(e)}"
             }
         
-        # Create knowledge base in database with description (which might be None)
+        # Create knowledge base in database
         db_kb = models.KnowledgeBase(
             kb_id=kb_id,
             name=kb.name,
-            description=kb.description,  # This will handle None values
+            description=kb.description,
             created_at=datetime.now(),
             embedding_model=kb.embedding_model,
             vector_store=kb.vector_store,
-            workspace_id=kb.workspace_id  # Optional field for workspace ID
+            # status=kb.status,
+            workspace_id = kb.workspace_id  # Optional field for workspace ID
         )
         
         db.add(db_kb)
@@ -407,7 +409,7 @@ def make_embeddings(
                 files = db.query(models.FileMetadata).filter(models.FileMetadata.kb_id==kb.kb_id).all()
                 # Don't convert to schema objects - work directly with database models
                 for file in files:
-                    # Skip files that failed during processing
+                    # Skip files that failed to process
                     if file.file_id not in [f.file_id for f in failed_files]:
                         file.status = statusEnum.SYNCED
                 
@@ -790,5 +792,210 @@ def get_knowledge_base_sources(
             "message": f"Failed to retrieve sources: {str(e)}",
             "kb_id": kb_id,
             "sources": []
+        }
+
+@router.post("/knowledgebase-with-sources")
+async def create_knowledge_base_with_sources(
+    kb_data: str = Form(None),  # Changed to accept form data as string
+    files: List[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    Create a knowledge base, upload files, and add URLs in a single operation.
+    """
+    try:
+        # Parse kb_data from JSON string to dict
+        if not kb_data:
+            return {
+                "status": "error",
+                "message": "KB data is required"
+            }
+        
+        try:
+            # Parse the JSON string into a Python dictionary
+            kb_data_dict = json.loads(kb_data)
+            
+            # Extract KB details and URLs
+            kb_details = kb_data_dict.get("kb", {})
+            urls = kb_data_dict.get("urls", [])
+            
+            # Create a KnowledgeBaseCreate object
+            kb = schemas.KnowledgeBaseCreate(
+                name=kb_details.get("name", ""),
+                description=kb_details.get("description"),
+                embedding_model=kb_details.get("embedding_model"),
+                vector_store=kb_details.get("vector_store"),
+                workspace_id=kb_details.get("workspace_id")
+            )
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Invalid JSON format: {str(e)}"
+            }
+        
+        # Step 1: Create the knowledge base
+        last_kb = db.query(models.KnowledgeBase).order_by(models.KnowledgeBase.kb_id.desc()).first()
+        
+        if last_kb:
+            last_id = int(last_kb.kb_id.split('_')[1])
+            new_id = last_id + 1
+        else:
+            new_id = 1
+        
+        kb_id = f"kb_{new_id}"
+        
+        # Create KB directory structure
+        base_path = pathlib.Path(__file__).parent.parent
+        kb_dir = base_path / "resources" / kb_id
+        sources_dir = kb_dir / "sources"
+        
+        try:
+            os.makedirs(sources_dir, exist_ok=True)
+        except Exception as e:
+            logger.error(f"Failed to create directory for KB {kb_id}: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Failed to create directory: {str(e)}"
+            }
+        
+        # Create knowledge base in database
+        db_kb = models.KnowledgeBase(
+            kb_id=kb_id,
+            name=kb.name,
+            description=kb.description,
+            created_at=datetime.now(),
+            embedding_model=kb.embedding_model,
+            vector_store=kb.vector_store,
+            workspace_id=kb.workspace_id
+        )
+        
+        db.add(db_kb)
+        db.commit()
+        db.refresh(db_kb)
+        
+        # Step 2: Upload files if provided
+        uploaded_files = []
+        
+        if files:
+            for file in files:
+                if not file:
+                    continue
+                    
+                # Generate unique file ID
+                file_id = f"file_{uuid.uuid4()}"
+                
+                # Get file extension and determine file type
+                filename = f"{file_id}_" + file.filename
+                file_extension = os.path.splitext(filename)[1].lower()
+                
+                # Create full path to save the file
+                file_path = os.path.join(sources_dir, filename)
+                
+                # Save the file
+                try:
+                    # Read file content
+                    contents = await file.read()
+                    
+                    # Write file to disk
+                    with open(file_path, "wb") as f:
+                        f.write(contents)
+                    
+                    # Create file metadata entry
+                    file_metadata = models.FileMetadata(
+                        file_id=file_id,
+                        filename=file.filename,
+                        file_size=len(contents),
+                        file_type=file_extension.replace(".", ""),
+                        kb_id=kb_id,
+                        file_path=str(file_path),
+                    )
+                    
+                    db.add(file_metadata)
+                    uploaded_files.append(file_metadata)
+                    
+                except Exception as e:
+                    logger.error(f"Failed to upload file {file.filename}: {str(e)}")
+                    continue
+        
+        # Step 3: Process URLs if provided
+        processed_urls = []
+        
+        if urls:
+            for url in urls:
+                try:
+                    # Parse URL to get domain for filename
+                    parsed_url = urlparse(url)
+                    domain = parsed_url.netloc
+                    
+                    # Generate unique file ID
+                    file_id = f"file_{uuid.uuid4()}"
+                    file_name = f"{file_id}_{domain}.html"
+                    file_path = os.path.join(sources_dir, file_name)
+                    
+                    # Fetch website content
+                    try:
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                        response = requests.get(url, headers=headers, timeout=10)
+                        response.raise_for_status()
+                    except requests.exceptions.RequestException as e:
+                        logger.error(f"Failed to fetch URL {url}: {str(e)}")
+                        continue
+                    
+                    # Get the HTML content
+                    html_content = response.text
+                    
+                    # Save original HTML
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        f.write(html_content)
+                    
+                    # Create file metadata
+                    file_metadata = models.FileMetadata(
+                        file_id=file_id,
+                        filename=file_name,
+                        file_size=len(html_content),
+                        file_type="html",
+                        kb_id=kb_id,
+                        file_path=str(file_path),
+                        url=url
+                    )
+                    
+                    db.add(file_metadata)
+                    processed_urls.append({"url": url, "file_id": file_id})
+                    
+                except Exception as e:
+                    logger.error(f"Failed to process URL {url}: {str(e)}")
+                    continue
+        
+        # Update KB status based on whether files were uploaded
+        if uploaded_files or processed_urls:
+            db_kb.status = schemas.statusEnum.UPDATED
+            db_kb.last_updated_at = datetime.now()
+        else:
+            db_kb.status = schemas.statusEnum.EMPTY
+            
+        # Commit all changes
+        db.commit()
+        db.refresh(db_kb)
+        
+        return {
+            "status": "success",
+            "kb_id": kb_id,
+            "kb_details": db_kb,
+            "files_uploaded": len(uploaded_files),
+            "urls_processed": len(processed_urls),
+            "message": f"Successfully created knowledge base {kb_id} with {len(uploaded_files)} files and {len(processed_urls)} URLs"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to create knowledge base with sources: {str(e)}")
+        db.rollback()
+        return {
+            "status": "error",
+            "message": f"Failed to create knowledge base with sources: {str(e)}"
         }
 

@@ -68,6 +68,7 @@ class DeleteFileResponse(BaseModel):
 
 class UrlSubmission(BaseModel):
     url: HttpUrl
+    
 
 class UrlSubmissionResponse(BaseModel):
     kb_id: str
@@ -101,3 +102,5 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+

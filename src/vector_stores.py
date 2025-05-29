@@ -7,6 +7,7 @@ from dialdeskai.src.queue.trigger import EventTrigger
 from dialdeskai.src.integrations.embeddings.gemini import GoogleGeminiEmbeddings
 from langchain_core.documents import Document
 from enum import Enum
+import time
 
 load_dotenv()
 
@@ -75,10 +76,13 @@ def add_to_vectorStore(config:dict,chunk_list:list[Document]):
 
         # Insert data
         if config.get("vector_store") == VectorStoreType.PGVECTOR:
-            vector_store_pg.clear()
-            for chunk in chunk_list:
-            #    print(type(chunk.page_content))
-               vector_store_pg.insert(data=chunk.page_content, metadata=chunk.metadata)
+            for i in range(15):
+                print(f"Iteration {i+1} of 10")
+                time.sleep(2)
+            # vector_store_pg.clear()
+            # for chunk in chunk_list:
+            # #    print(type(chunk.page_content))
+            #    vector_store_pg.insert(data=chunk.page_content, metadata=chunk.metadata)
                
         elif config.get("vector_store") == VectorStoreType.QDRANT:
             vector_store_qdrant.clear()
