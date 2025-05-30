@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Boolean
 from sqlalchemy.sql import func
 from .database import Base
 from .schemas import statusEnum
+from sqlalchemy.orm import relationship
 
 class KnowledgeBase(Base):
     __tablename__ = "knowledge_bases"
@@ -15,8 +16,11 @@ class KnowledgeBase(Base):
     vector_store = Column(String, index=True)
     status = Column(String, default=statusEnum.UNSYNCED)  # Default status set to "unsynced"
     workspace_id = Column(String, nullable=True)  # Optional field for workspace ID
-
-
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Track who created the KB
+    
+    # Relationship to User
+    creator = relationship("User", back_populates="knowledge_bases")
+    
 class FileMetadata(Base):
     __tablename__ = "file_metadata"
     
@@ -41,3 +45,6 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationship to KnowledgeBase
+    knowledge_bases = relationship("KnowledgeBase", back_populates="creator")

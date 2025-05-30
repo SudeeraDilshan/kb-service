@@ -21,7 +21,7 @@ from langchain_community.document_loaders.word_document import Docx2txtLoader
 from langchain_community.document_loaders.text import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..vector_stores import add_to_vectorStore
-from ..security.utils import get_current_active_user, validate_admin
+from ..security.authUtils import get_current_active_user, validate_admin
 from ..schemas import statusEnum
 # from langchain_community.document_loaders import JSONLoader
 # import json
@@ -100,7 +100,8 @@ def create_knowledge_base(
             embedding_model=kb.embedding_model,
             vector_store=kb.vector_store,
             # status=kb.status,
-            workspace_id = kb.workspace_id  # Optional field for workspace ID
+            workspace_id = kb.workspace_id,  # Optional field for workspace ID
+            created_by = current_user.id
         )
         
         db.add(db_kb)

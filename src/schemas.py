@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List, Dict
 from enum import Enum
 
+
 class statusEnum(str, Enum):
     UNSYNCED = "unsynced"
     UPDATED = "updated"
@@ -10,6 +11,31 @@ class statusEnum(str, Enum):
     SYNCING = "syncing"
     FAILED = "failed"
 
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+    full_name: Optional[str] = None
+
+class UserCreate(UserBase):
+    password: str
+    is_admin: Optional[bool] = False
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    is_admin: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+    
 class KnowledgeBaseBase(BaseModel):
     name: str
     description: Optional[str] = None  # Make description optional with default None
@@ -24,6 +50,8 @@ class KnowledgeBase(KnowledgeBaseCreate):
     kb_id: str
     created_at: datetime
     last_updated_at: datetime
+    created_by: int  # User ID who created the KB
+    creator: Optional[User] = None
     
     class Config:
         from_attributes = True  # Updated from orm_mode = True for Pydantic v2
@@ -77,30 +105,3 @@ class UrlSubmissionResponse(BaseModel):
     filename: str
     file_size: int
     message: str
-
-class UserBase(BaseModel):
-    username: str
-    email: EmailStr
-    full_name: Optional[str] = None
-
-class UserCreate(UserBase):
-    password: str
-    is_admin: Optional[bool] = False
-
-class User(UserBase):
-    id: int
-    is_active: bool
-    is_admin: bool
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    username: Optional[str] = None
-
-

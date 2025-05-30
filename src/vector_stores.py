@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 import time
-from dialdeskai.vector_stores.pgvector import PGVector
-from dialdeskai.vector_stores.qdrant import Qdrant
-from dialdeskai.vector_stores.base import VectorStore
-from dialdeskai.embeddings.openai import OpenAIEmbeddings
-from dialdeskai.embeddings.google import GoogleGeminiEmbeddings
-from dialdeskai.shared.types import EmbeddingModelType, VectorStoreType
+from dialdeskai_vs.vector_stores.pgvector import PGVector
+from dialdeskai_vs.vector_stores.qdrant import Qdrant
+from dialdeskai_vs.vector_stores.base import VectorStore
+from dialdeskai_vs.embeddings.openai import OpenAIEmbeddings
+from dialdeskai_vs.embeddings.google import GoogleGeminiEmbeddings
+from dialdeskai_vs.shared.types import EmbeddingModelType, VectorStoreType
 
 load_dotenv()
 
