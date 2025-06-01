@@ -79,7 +79,7 @@ def create_knowledge_base(
         
         # Create KB directory structure
         base_path = pathlib.Path(__file__).parent.parent
-        kb_dir = base_path / "resources" /kb_id
+        kb_dir = base_path /"resources"/kb.workspace_id/kb_id
         sources_dir = kb_dir / "sources"
         
         try:
@@ -101,7 +101,7 @@ def create_knowledge_base(
             vector_store=kb.vector_store,
             # status=kb.status,
             workspace_id = kb.workspace_id,  # Optional field for workspace ID
-            created_by = current_user.id
+            created_by = current_user.username
         )
         
         db.add(db_kb)
@@ -135,7 +135,7 @@ async def upload_files(
     
     # Define path to save files
     base_path = pathlib.Path(__file__).parent.parent
-    sources_dir = base_path / "resources" / kb_id / "sources"
+    sources_dir = base_path /"resources"/kb.workspace_id/kb_id / "sources"
     
     # Make sure the directory exists
     try:
@@ -178,6 +178,7 @@ async def upload_files(
                     file_type=file_extension.replace(".", ""),
                     kb_id=kb_id,
                     file_path=str(file_path),
+                    uploaded_by=current_user.username,
                 )
                 
                 # Add to database
@@ -240,7 +241,7 @@ def make_embeddings(
     
     # Get path to resources directory for this knowledge base
     base_path = pathlib.Path(__file__).parent.parent
-    sources_dir = base_path / "resources" / kb_id / "sources"
+    sources_dir = base_path /"resources"/kb.workspace_id/kb_id / "sources"
     
     if not os.path.exists(sources_dir):
         logger.warning(f"Sources directory for knowledge base {kb_id} not found")
@@ -494,7 +495,7 @@ def delete_knowledge_base(
         
         # Delete the directory and all files
         base_path = pathlib.Path(__file__).parent.parent
-        kb_dir = base_path / "resources" / kb_id
+        kb_dir = base_path /"resources"/kb.workspace_id/kb_id
         
         if os.path.exists(kb_dir):
             try:
@@ -634,7 +635,8 @@ def add_url_source(
         
         # Define path to save file
         base_path = pathlib.Path(__file__).parent.parent  #src directory
-        sources_dir = base_path / "resources" / kb_id / "sources"
+        sources_dir = base_path /"resources"/kb.workspace_id/kb_id/ "sources"
+        
         
         # Make sure the directory exists
         try:
@@ -850,7 +852,7 @@ async def create_knowledge_base_with_sources(
         
         # Create KB directory structure
         base_path = pathlib.Path(__file__).parent.parent
-        kb_dir = base_path / "resources" / kb_id
+        kb_dir = base_path /"resources"/kb.workspace_id/kb_id
         sources_dir = kb_dir / "sources"
         
         try:

@@ -16,7 +16,7 @@ class KnowledgeBase(Base):
     vector_store = Column(String, index=True)
     status = Column(String, default=statusEnum.UNSYNCED)  # Default status set to "unsynced"
     workspace_id = Column(String, nullable=True)  # Optional field for workspace ID
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Track who created the KB
+    created_by = Column(String, ForeignKey("users.username"), nullable=False)  # Track who created the KB
     
     # Relationship to User
     creator = relationship("User", back_populates="knowledge_bases")
@@ -29,6 +29,7 @@ class FileMetadata(Base):
     file_size = Column(Integer)
     file_type = Column(String)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
+    uploaded_by = Column(String, ForeignKey("users.username"), nullable=False)  # Track who uploaded the file
     kb_id = Column(String, ForeignKey("knowledge_bases.kb_id"))
     file_path = Column(String)  # Added column for storing file path
     url = Column(String, nullable=True)  # URL for accessing the file (optional)

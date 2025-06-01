@@ -50,7 +50,7 @@ class KnowledgeBase(KnowledgeBaseCreate):
     kb_id: str
     created_at: datetime
     last_updated_at: datetime
-    created_by: int  # User ID who created the KB
+    created_by: str  # User ID who created the KB
     creator: Optional[User] = None
     
     class Config:
@@ -68,7 +68,7 @@ class FileMetadataCreate(BaseModel):
 class FileMetaData(FileMetadataCreate):
     file_id: str
     upload_date: datetime
-    
+    uploaded_by: str  # Username of the uploader
     class Config:
         from_attributes = True
 
