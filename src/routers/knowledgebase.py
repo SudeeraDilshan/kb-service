@@ -79,7 +79,7 @@ def create_knowledge_base(
         
         # Create KB directory structure
         base_path = pathlib.Path(__file__).parent.parent
-        kb_dir = base_path /"resources"/kb.workspace_id/kb_id
+        kb_dir = base_path /"resources"/f"workspace_{kb.workspace_id}"/kb_id
         sources_dir = kb_dir / "sources"
         
         try:
@@ -135,7 +135,7 @@ async def upload_files(
     
     # Define path to save files
     base_path = pathlib.Path(__file__).parent.parent
-    sources_dir = base_path /"resources"/kb.workspace_id/kb_id / "sources"
+    sources_dir = base_path /"resources"/f"workspace_{kb.workspace_id}"/kb_id / "sources"
     
     # Make sure the directory exists
     try:
@@ -241,7 +241,7 @@ def make_embeddings(
     
     # Get path to resources directory for this knowledge base
     base_path = pathlib.Path(__file__).parent.parent
-    sources_dir = base_path /"resources"/kb.workspace_id/kb_id / "sources"
+    sources_dir = base_path /"resources"/f"workspace_{kb.workspace_id}"/kb_id / "sources"
     
     if not os.path.exists(sources_dir):
         logger.warning(f"Sources directory for knowledge base {kb_id} not found")
@@ -252,7 +252,6 @@ def make_embeddings(
     
     all_documents = []
     processed_files = []
-    all_content = ""
     all_chunks=[]
     failed_files = []
     
@@ -272,6 +271,7 @@ def make_embeddings(
             }    
         
         for filename in os.listdir(sources_dir):
+            
             file_path = os.path.join(sources_dir, filename)
             
             # Skip directories
@@ -282,8 +282,8 @@ def make_embeddings(
             name_without_ext,file_extension = os.path.splitext(filename)
             file_extension = file_extension.lower()
             
-            main_part = name_without_ext.split('_', 2)[:2]
-            file_id = '_'.join(main_part)
+            main_parts = name_without_ext.split('_', 2)[:2]
+            file_id = '_'.join(main_parts)
             loader = None
             
             # get file data
@@ -303,6 +303,8 @@ def make_embeddings(
             file_url = file_metadata.url if file_metadata.url else None
             kb_id = kb.kb_id
             kb_name = kb.name
+            upload_date = file_metadata.upload_date
+            uploaded_by = file_metadata.uploaded_by
             file_status = file_metadata.status
             
             # Select appropriate loader based on file extension
@@ -333,6 +335,7 @@ def make_embeddings(
                     processed_files.append(filename)
                     
                     # Extract text from documents and add to all_content
+                    all_content = ""
                     for doc in documents:
                         all_content += doc.page_content
 
@@ -353,6 +356,8 @@ def make_embeddings(
                     meta['file_url'] = file_url
                     meta["kb_id"] = kb_id
                     meta["kb_name"] = kb_name
+                    meta["upload_date"] = upload_date
+                    meta["uploaded_by"] = uploaded_by
                     # meta["file_status"] = file_status
                     doc.metadata = meta   
                       
@@ -495,7 +500,7 @@ def delete_knowledge_base(
         
         # Delete the directory and all files
         base_path = pathlib.Path(__file__).parent.parent
-        kb_dir = base_path /"resources"/kb.workspace_id/kb_id
+        kb_dir = base_path /"resources"/f"workspace_{kb.workspace_id}"/kb_id
         
         if os.path.exists(kb_dir):
             try:
@@ -635,7 +640,7 @@ def add_url_source(
         
         # Define path to save file
         base_path = pathlib.Path(__file__).parent.parent  #src directory
-        sources_dir = base_path /"resources"/kb.workspace_id/kb_id/ "sources"
+        sources_dir = base_path /"resources"/f"workspace_{kb.workspace_id}"/kb_id/ "sources"
         
         
         # Make sure the directory exists
@@ -852,7 +857,7 @@ async def create_knowledge_base_with_sources(
         
         # Create KB directory structure
         base_path = pathlib.Path(__file__).parent.parent
-        kb_dir = base_path /"resources"/kb.workspace_id/kb_id
+        kb_dir = base_path /"resources"/f"workspace_{kb.workspace_id}"/kb_id
         sources_dir = kb_dir / "sources"
         
         try:
@@ -870,6 +875,7 @@ async def create_knowledge_base_with_sources(
             name=kb.name,
             description=kb.description,
             created_at=datetime.now(),
+            created_by = current_user.username,
             embedding_model=kb.embedding_model,
             vector_store=kb.vector_store,
             workspace_id=kb.workspace_id
@@ -914,6 +920,7 @@ async def create_knowledge_base_with_sources(
                         file_type=file_extension.replace(".", ""),
                         kb_id=kb_id,
                         file_path=str(file_path),
+                        uploaded_by= current_user.username
                     )
                     
                     db.add(file_metadata)
@@ -964,6 +971,7 @@ async def create_knowledge_base_with_sources(
                         file_type="html",
                         kb_id=kb_id,
                         file_path=str(file_path),
+                        uploaded_by=current_user.username,
                         url=url
                     )
                     
