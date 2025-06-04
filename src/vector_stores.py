@@ -59,39 +59,16 @@ def get_vector_store(config: dict) -> VectorStore:
 
 def add_to_vectorStore(config: dict, chunk_list: list[Document]):
     try:
+        workspace_id = config.get("workspace_id", os.getenv("WORKSPACE_ID"))
         vector_store = get_vector_store(config)
-        vector_store.clear(workspace_id=os.getenv("WORKSPACE_ID"))
+        vector_store.clear(workspace_id=workspace_id)
         for chunk in chunk_list:
             vector_store.insert(
                 data=chunk.page_content, 
                 metadata=chunk.metadata, 
-                workspace_id=os.getenv("WORKSPACE_ID")
+                workspace_id=workspace_id
             )
-        # vector_store.clear()
-
-        # Insert data
-        # if config.get("vector_store") == VectorStoreType.PGVECTOR:
-        #     for i in range(15):
-        #         print(f"Iteration {i+1} of 10")
-        #         time.sleep(2)
-        #     vector_store.clear(workspace_id=os.getenv("WORKSPACE_ID"))
-        #     for chunk in chunk_list:
-        #     #    print(type(chunk.page_content))
-        #        vector_store.insert(
-        #            data=chunk.page_content, 
-        #            metadata=chunk.metadata,
-        #            workspace_id=os.getenv("WORKSPACE_ID")
-        #            )
-
-        # elif config.get("vector_store") == VectorStoreType.QDRANT:
-        #     vector_store.clear(workspace_id=os.getenv("WORKSPACE_ID"))
-        #     for chunk in chunk_list:
-        #         vector_store.insert(
-        #             data=chunk.page_content, 
-        #             metadata=chunk.metadata, 
-        #             workspace_id=os.getenv("WORKSPACE_ID")
-        #         )
-
+            
         print("Data inserted successfully")
 
     except Exception as e:

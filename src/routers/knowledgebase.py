@@ -96,9 +96,11 @@ def create_knowledge_base(
             kb_id=kb_id,
             name=kb.name,
             description=kb.description,
+            category=kb.category,
             created_at=datetime.now(),
             embedding_model=kb.embedding_model,
             vector_store=kb.vector_store,
+            
             # status=kb.status,
             workspace_id = kb.workspace_id,  # Optional field for workspace ID
             created_by = current_user.username
@@ -356,7 +358,7 @@ def make_embeddings(
                     meta['file_url'] = file_url
                     meta["kb_id"] = kb_id
                     meta["kb_name"] = kb_name
-                    meta["upload_date"] = upload_date
+                    meta["upload_date"] = upload_date.isoformat() 
                     meta["uploaded_by"] = uploaded_by
                     # meta["file_status"] = file_status
                     doc.metadata = meta   
@@ -400,7 +402,8 @@ def make_embeddings(
         config ={
             "knowledge_base": kb.name,
             "embedding_model": kb.embedding_model.upper(),
-            "vector_store": kb.vector_store.upper()
+            "vector_store": kb.vector_store.upper(),
+            "workspace_id": kb.workspace_id
         } 
         
         try:

@@ -39,6 +39,7 @@ class TokenData(BaseModel):
 class KnowledgeBaseBase(BaseModel):
     name: str
     description: Optional[str] = None  # Make description optional with default None
+    category: Optional[str] = None  # Make category optional with default None
     status : statusEnum = statusEnum.UNSYNCED
     
 class KnowledgeBaseCreate(KnowledgeBaseBase):

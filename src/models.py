@@ -10,6 +10,7 @@ class KnowledgeBase(Base):
     kb_id = Column(String, primary_key=True, index=True)
     name = Column(String, index=True)
     description = Column(String,index=True)  # Optional description field
+    category = Column(String, index=True)  # Optional category field
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     embedding_model = Column(String, index=True)
